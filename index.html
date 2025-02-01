@@ -1,234 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elevate AI - Video to Text</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f7fc;
-            color: #333;
-            padding: 20px;
-            text-align: center;
-        }
-        #dropArea {
-            width: 80%;
-            max-width: 500px;
-            height: 200px;
-            border: 2px dashed #007BFF;
-            background-color: #e9f7ff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 20px auto;
-            cursor: pointer;
-            border-radius: 10px;
-        }
-        #dropArea.highlight {
-            background-color: #cce5ff;
-        }
-        #fileInput {
-            display: none;
-        }
-        #videoPreview {
-            width: 80%;
-            max-width: 500px;
-            margin-top: 20px;
-            display: none;
-            border-radius: 8px;
-        }
-        textarea {
-            width: 80%;
-            max-width: 500px;
-            height: 120px;
-            font-size: 14px;
-            margin-top: 10px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            resize: none;
-            background-color: #fafafa;
-        }
-        button {
-            background-color: #007BFF;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        h2 {
-            color: #007BFF;
-        }
-        .container {
-            max-width: 600px;
-            margin: auto;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h2>Elevate AI - Video to Text</h2>
-
-        <!-- Drag & Drop Area -->
-        <div id="dropArea">
-            <p>Drag & Drop Video Here or Click to Upload</p>
-            <input type="file" id="fileInput" accept="video/*">
-        </div>
-
-        <!-- Video Preview -->
-        <video id="videoPreview" controls></video>
-
-        <button onclick="processVideo()">Upload & Process</button>
-        <p id="status">Status: Waiting...</p>
-
-        <h3>Transcript:</h3>
-        <textarea id="transcript" readonly></textarea>
-
-        <button onclick="copyText()">Copy Transcript</button>
-        <button onclick="summarizeText()">Summarize Transcript</button>
-    </div>
-
+<html>
+  <head>
+    <title>Elevator AI API Request</title>
     <script>
-        const baseUrl = "https://api.elevateai.com/v1/interactions";  // Correct API Base URL
-        const apiToken = "31c9856c-ffbf-460d-8f09-438d87780a12";  // Replace with your actual API key
+      function sendRequest() {
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        myHeaders.append("X-API-Token", "{31c9856c-ffbf-460d-8f09-438d87780a12}"); // Replace with actual token
 
-        const dropArea = document.getElementById("dropArea");
-        const fileInput = document.getElementById("fileInput");
-        const videoPreview = document.getElementById("videoPreview");
-        let selectedFile = null;
-
-        // Drag & Drop Events
-        dropArea.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            dropArea.classList.add("highlight");
+        var raw = JSON.stringify({
+          "type": "audio",
+          "languageTag": "auto",
+          "vertical": "default",
+          "model": "echo",
+          "audioTranscriptionMode": "highAccuracy",
+          "originalFileName": "ABC00012.wav",
+          "includeAiResults": true,
+          "metadata": "{Your JSON metadata payload}"
         });
 
-        dropArea.addEventListener("dragleave", () => {
-            dropArea.classList.remove("highlight");
-        });
+        var requestOptions = {
+          method: 'POST',
+          headers: myHeaders,
+          body: raw,
+          redirect: 'follow'
+        };
 
-        dropArea.addEventListener("drop", (e) => {
-            e.preventDefault();
-            dropArea.classList.remove("highlight");
-            if (e.dataTransfer.files.length > 0) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        dropArea.addEventListener("click", () => fileInput.click());
-
-        fileInput.addEventListener("change", (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
-
-        function handleFile(file) {
-            if (!file.type.startsWith("video/")) {
-                alert("Please upload a valid video file.");
-                return;
-            }
-            selectedFile = file;
-            videoPreview.src = URL.createObjectURL(file);
-            videoPreview.style.display = "block";
-        }
-
-        async function processVideo() {
-            if (!selectedFile) {
-                alert("Please select a video file first.");
-                return;
-            }
-
-            document.getElementById("status").innerText = "Uploading...";
-
-            try {
-                // Declare the interaction
-                let declareResponse = await fetch(`${baseUrl}/declare`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        language: "en-us",
-                        model: "default",
-                        accuracy: "highAccuracy"
-                    })
-                });
-                let declareData = await declareResponse.json();
-                let interactionId = declareData.id;
-
-                // Upload Video File
-                let formData = new FormData();
-                formData.append("file", selectedFile);
-
-                let uploadResponse = await fetch(`${baseUrl}/upload/${interactionId}`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiToken}`
-                    },
-                    body: formData
-                });
-
-                if (!uploadResponse.ok) throw new Error("Upload failed");
-
-                document.getElementById("status").innerText = "Processing...";
-
-                // Poll for Processing Completion
-                while (true) {
-                    let statusResponse = await fetch(`${baseUrl}/status/${interactionId}`, {
-                        headers: { "Authorization": `Bearer ${apiToken}` }
-                    });
-                    let statusData = await statusResponse.json();
-
-                    if (statusData.status === "processed") break;
-                    await new Promise(r => setTimeout(r, 30000)); // Check every 30 seconds
-                }
-
-                // Get Transcript
-                let transcriptResponse = await fetch(`${baseUrl}/transcripts/${interactionId}?full=true`, {
-                    headers: { "Authorization": `Bearer ${apiToken}` }
-                });
-                let transcripts = await transcriptResponse.text();
-
-                // Display results
-                document.getElementById("status").innerText = "Processing Complete!";
-                document.getElementById("transcript").value = transcripts;
-
-            } catch (error) {
-                document.getElementById("status").innerText = "Error: " + error.message;
-            }
-        }
-
-        function copyText() {
-            let transcriptBox = document.getElementById("transcript");
-            transcriptBox.select();
-            document.execCommand("copy");
-            alert("Transcript copied!");
-        }
-
-        function summarizeText() {
-            let transcript = document.getElementById("transcript").value;
-            if (!transcript) {
-                alert("No transcript available to summarize.");
-                return;
-            }
-
-            // Call API or summarizer function here
-            let summary = transcript.split('.').slice(0, 3).join('.'); // Basic summarization (first 3 sentences)
-            document.getElementById("transcript").value = summary;
-            alert("Transcript summarized.");
-        }
+        fetch("https://api.elevateai.com/v1/interactions", requestOptions)
+          .then(response => response.json()) // Convert response to JSON
+          .then(result => {
+            console.log(result);
+            document.getElementById("response").innerText = JSON.stringify(result, null, 2);
+          })
+          .catch(error => console.log('Error:', error));
+      }
     </script>
-
-</body>
+  </head>
+  <body>
+    <h2>Elevator AI API Request</h2>
+    <button onclick="sendRequest()">Send API Request</button>
+    <pre id="response"></pre>
+  </body>
 </html>
+
