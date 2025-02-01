@@ -1,45 +1,105 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Elevator AI API Request</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevate AI - Video to Text</title>
+</head>
+<body>
+    <h2>Elevate AI - Video to Text</h2>
+    
+    <!-- File Upload -->
+    <input type="file" id="videoInput" accept="video/*">
+    <button onclick="processVideo()">Upload & Process</button>
+
+    <p id="status">Status: Waiting...</p>
+
+    <!-- Transcript Output -->
+    <h3>Transcript:</h3>
+    <textarea id="transcript" rows="10" cols="50" readonly></textarea>
+    <button onclick="copyText()">Copy Transcript</button>
+
     <script>
-      function sendRequest() {
-        var myHeaders = new Headers();
-        myHeaders.append("Content-Type", "application/json");
-        myHeaders.append("X-API-Token", "{31c9856c-ffbf-460d-8f09-438d87780a12}"); // Replace with actual token
+        const baseUrl = "https://api.elevateai.com/v1/interactions";  // Corrected API Base URL
+        const apiToken = "YOUR_API_TOKEN_HERE";  // Replace with your API key
 
-        var raw = JSON.stringify({
-          "type": "audio",
-          "languageTag": "auto",
-          "vertical": "default",
-          "model": "echo",
-          "audioTranscriptionMode": "highAccuracy",
-          "originalFileName": "ABC00012.wav",
-          "includeAiResults": true,
-          "metadata": "{Your JSON metadata payload}"
-        });
+        async function processVideo() {
+            let fileInput = document.getElementById("videoInput");
+            if (fileInput.files.length === 0) {
+                alert("Please select a video file.");
+                return;
+            }
 
-        var requestOptions = {
-          method: 'POST',
-          headers: myHeaders,
-          body: raw,
-          redirect: 'follow'
-        };
+            let file = fileInput.files[0];
 
-        fetch("https://api.elevateai.com/v1/interactions", requestOptions)
-          .then(response => response.json()) // Convert response to JSON
-          .then(result => {
-            console.log(result);
-            document.getElementById("response").innerText = JSON.stringify(result, null, 2);
-          })
-          .catch(error => console.log('Error:', error));
-      }
+            document.getElementById("status").innerText = "Uploading...";
+
+            try {
+                // Step 1: Declare the interaction
+                let declareResponse = await fetch(`${baseUrl}/declare`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        language: "en-us",
+                        model: "default",
+                        accuracy: "highAccuracy"
+                    })
+                });
+                let declareData = await declareResponse.json();
+                let interactionId = declareData.id;
+
+                // Step 2: Upload Video File
+                let formData = new FormData();
+                formData.append("file", file);
+
+                let uploadResponse = await fetch(`${baseUrl}/upload/${interactionId}`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiToken}`
+                    },
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) throw new Error("Upload failed");
+
+                document.getElementById("status").innerText = "Processing...";
+
+                // Step 3: Poll for Processing Completion
+                while (true) {
+                    let statusResponse = await fetch(`${baseUrl}/status/${interactionId}`, {
+                        headers: { "Authorization": `Bearer ${apiToken}` }
+                    });
+                    let statusData = await statusResponse.json();
+
+                    if (statusData.status === "processed") break;
+                    await new Promise(r => setTimeout(r, 30000)); // Check every 30 seconds
+                }
+
+                // Step 4: Get Transcript
+                let transcriptResponse = await fetch(`${baseUrl}/transcripts/${interactionId}?full=true`, {
+                    headers: { "Authorization": `Bearer ${apiToken}` }
+                });
+                let transcripts = await transcriptResponse.text();
+
+                // Display results
+                document.getElementById("status").innerText = "Processing Complete!";
+                document.getElementById("transcript").value = transcripts;
+
+            } catch (error) {
+                document.getElementById("status").innerText = "Error: " + error.message;
+            }
+        }
+
+        function copyText() {
+            let transcriptBox = document.getElementById("transcript");
+            transcriptBox.select();
+            document.execCommand("copy");
+            alert("Transcript copied!");
+        }
     </script>
-  </head>
-  <body>
-    <h2>Elevator AI API Request</h2>
-    <button onclick="sendRequest()">Send API Request</button>
-    <pre id="response"></pre>
-  </body>
+</body>
 </html>
 
