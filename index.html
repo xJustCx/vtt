@@ -32,10 +32,11 @@
                 return;
             }
 
+            const file = fileInput.files[0];
             document.getElementById("status").innerText = "Uploading...";
 
             try {
-                // Declare the interaction
+                // Step 1: Declare the interaction
                 let declareResponse = await fetch(`${baseUrl}/declare`, {
                     method: "POST",
                     headers: {
@@ -52,9 +53,9 @@
                 let declareData = await declareResponse.json();
                 let interactionId = declareData.id;
 
-                // Upload the file
+                // Step 2: Upload the file
                 let formData = new FormData();
-                formData.append("file", fileInput.files[0]);
+                formData.append("file", file); // Correctly sending file as binary
 
                 let uploadResponse = await fetch(`${baseUrl}/upload/${interactionId}`, {
                     method: "POST",
@@ -68,7 +69,7 @@
 
                 document.getElementById("status").innerText = "Processing...";
 
-                // Poll for processing completion
+                // Step 3: Poll for processing completion
                 while (true) {
                     let statusResponse = await fetch(`${baseUrl}/status/${interactionId}`, {
                         headers: { "Authorization": `Bearer ${apiToken}` }
@@ -79,14 +80,14 @@
                     await new Promise(r => setTimeout(r, 30000)); // Wait 30 seconds
                 }
 
-                // Get full transcript
+                // Step 4: Get full transcript
                 let transcriptResponse = await fetch(`${baseUrl}/transcripts/${interactionId}?full=true`, {
                     headers: { "Authorization": `Bearer ${apiToken}` }
                 });
                 let transcripts = await transcriptResponse.text();
                 document.getElementById("transcript").value = transcripts;
 
-                // Get AI summary
+                // Step 5: Get AI summary
                 let aiResultsResponse = await fetch(`${baseUrl}/aiResults/${interactionId}`, {
                     headers: { "Authorization": `Bearer ${apiToken}` }
                 });
@@ -109,4 +110,3 @@
     </script>
 </body>
 </html>
-
