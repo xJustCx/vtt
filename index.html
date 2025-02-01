@@ -3,110 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transcription</title>
+    <title>Upload & Transcribe</title>
 </head>
 <body>
+
     <h2>Upload & Transcribe</h2>
-    
-    <input type="file" id="fileInput" accept=".mp3, .mp4, .wav, .m4a">
-    <button onclick="processAudio()">Upload & Process</button>
-    
-    <p id="status">Status: Waiting...</p>
-    
+    <input type="file" id="audioFile">
+    <button onclick="uploadAndProcess()">Upload & Process</button>
+
+    <p id="error"></p>
+
     <h3>Full Transcript:</h3>
-    <textarea id="transcript" rows="5" cols="50" readonly></textarea>
+    <textarea id="transcript" rows="5" cols="50"></textarea>
     <button onclick="copyText('transcript')">Copy Transcript</button>
-    
+
     <h3>Summarized Text:</h3>
-    <textarea id="aiResults" rows="3" cols="50" readonly></textarea>
-    <button onclick="copyText('aiResults')">Copy Summary</button>
+    <textarea id="summary" rows="5" cols="50"></textarea>
+    <button onclick="copyText('summary')">Copy Summary</button>
 
     <script>
-        const baseUrl = "https://api.assemblyai.com";
-        const apiToken = "2346b905fedf40518f50049fba1c898f";
-
-        async function processAudio() {
-            const fileInput = document.getElementById("fileInput");
+        function uploadAndProcess() {
+            const fileInput = document.getElementById('audioFile');
             if (!fileInput.files.length) {
-                alert("Please select a file.");
+                document.getElementById('error').innerText = "Please select a file!";
                 return;
             }
 
             const file = fileInput.files[0];
-            document.getElementById("status").innerText = "Uploading...";
+            const formData = new FormData();
+            formData.append("audio", file);
 
-            try {
-                // Step 1: Declare the interaction
-                let declareResponse = await fetch(`${baseUrl}/declare`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        language: "en-us",
-                        model: "default",
-                        accuracy: "highAccuracy"
-                    })
-                });
-
-                let declareData = await declareResponse.json();
-                let interactionId = declareData.id;
-
-                // Step 2: Upload the file
-                let formData = new FormData();
-                formData.append("file", file); // Correctly sending file as binary
-
-                let uploadResponse = await fetch(`${baseUrl}/upload/${interactionId}`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiToken}`
-                    },
-                    body: formData
-                });
-
-                if (!uploadResponse.ok) throw new Error("Upload failed");
-
-                document.getElementById("status").innerText = "Processing...";
-
-                // Step 3: Poll for processing completion
-                while (true) {
-                    let statusResponse = await fetch(`${baseUrl}/status/${interactionId}`, {
-                        headers: { "Authorization": `Bearer ${apiToken}` }
-                    });
-                    let statusData = await statusResponse.json();
-
-                    if (statusData.status === "processed") break;
-                    await new Promise(r => setTimeout(r, 30000)); // Wait 30 seconds
-                }
-
-                // Step 4: Get full transcript
-                let transcriptResponse = await fetch(`${baseUrl}/transcripts/${interactionId}?full=true`, {
-                    headers: { "Authorization": `Bearer ${apiToken}` }
-                });
-                let transcripts = await transcriptResponse.text();
-                document.getElementById("transcript").value = transcripts;
-
-                // Step 5: Get AI summary
-                let aiResultsResponse = await fetch(`${baseUrl}/aiResults/${interactionId}`, {
-                    headers: { "Authorization": `Bearer ${apiToken}` }
-                });
-                let aiResults = await aiResultsResponse.text();
-                document.getElementById("aiResults").value = aiResults;
-
-                document.getElementById("status").innerText = "Processing Complete!";
-                
-            } catch (error) {
-                document.getElementById("status").innerText = "Error: " + error.message;
-            }
+            fetch('https://cors-anywhere.herokuapp.com/https://assembly.ai/wfid/firess.mp3/declare', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'YOUR_API_KEY', // Replace with your API Key
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('transcript').value = data.text || "No transcript available.";
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('error').innerText = "Error: Failed to fetch.";
+            });
         }
 
-        function copyText(elementId) {
-            let textArea = document.getElementById(elementId);
-            textArea.select();
+        function copyText(id) {
+            const textarea = document.getElementById(id);
+            textarea.select();
             document.execCommand("copy");
-            alert("Copied to clipboard!");
+            alert("Copied!");
         }
     </script>
+
 </body>
 </html>
+
