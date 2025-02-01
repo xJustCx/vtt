@@ -8,48 +8,78 @@
 <body>
 
     <h2>Upload & Transcribe</h2>
-    <input type="file" id="audioFile">
+    <input type="file" id="audioFile" accept=".mp3, .mp4, .wav, .m4a">
     <button onclick="uploadAndProcess()">Upload & Process</button>
 
-    <p id="error"></p>
-
+    <p id="status">Status: Waiting...</p>
+    
     <h3>Full Transcript:</h3>
-    <textarea id="transcript" rows="5" cols="50"></textarea>
+    <textarea id="transcript" rows="5" cols="50" readonly></textarea>
     <button onclick="copyText('transcript')">Copy Transcript</button>
 
     <h3>Summarized Text:</h3>
-    <textarea id="summary" rows="5" cols="50"></textarea>
+    <textarea id="summary" rows="5" cols="50" readonly></textarea>
     <button onclick="copyText('summary')">Copy Summary</button>
 
     <script>
-        function uploadAndProcess() {
+        const API_KEY = "2346b905fedf40518f50049fba1c898f; // 🔹 Replace with your free AssemblyAI API key
+        const API_URL = "https://api.assemblyai.com/v2";
+
+        async function uploadAndProcess() {
             const fileInput = document.getElementById('audioFile');
             if (!fileInput.files.length) {
-                document.getElementById('error').innerText = "Please select a file!";
+                document.getElementById('status').innerText = "❌ Please select a file!";
                 return;
             }
 
             const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append("audio", file);
+            document.getElementById('status').innerText = "Uploading...";
 
-            fetch('https://cors-anywhere.herokuapp.com/https://assembly.ai/wfid/firess.mp3/declare', {
-                method: 'POST',
-                headers: {
-                    'Authorization': '2346b905fedf40518f50049fba1c898f', // Replace with your API Key
-                },
-                body: JSON.stringify({
+            try {
+                // 🔹 Step 1: Upload file to AssemblyAI
+                const formData = new FormData();
+                formData.append("file", file);
+                
+                const uploadResponse = await fetch(`${API_URL}/upload`, {
+                    method: "POST",
+                    headers: { "Authorization": API_KEY },
+                    body: formData
+                });
 
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => console.log('Success:', data))
-            .catch(error => console.error('Error:', error));
+                const uploadData = await uploadResponse.json();
+                const audioUrl = uploadData.upload_url;
+                document.getElementById('status').innerText = "Processing...";
+
+                // 🔹 Step 2: Request Transcription
+                const transcriptResponse = await fetch(`${API_URL}/transcript`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ audio_url: audioUrl, auto_chapters: true }) // 🔹 Enables AI Summary
+                });
+
+                const transcriptData = await transcriptResponse.json();
+                const transcriptId = transcriptData.id;
+
+                // 🔹 Step 3: Poll for Transcription Completion
+                let transcriptStatus;
+                do {
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // 🔹 Wait 5 sec
+                    const statusResponse = await fetch(`${API_URL}/transcript/${transcriptId}`, {
+                        headers: { "Authorization": API_KEY }
+                    });
+                    transcriptStatus = await statusResponse.json();
+                } while (transcriptStatus.status !== "completed");
+
+                // 🔹 Step 4: Display Transcript & AI Summary
+                document.getElementById('transcript').value = transcriptStatus.text;
+                document.getElementById('summary').value = transcriptStatus.chapters ? transcriptStatus.chapters.map(c => c.summary).join("\n") : "No summary available.";
+                document.getElementById('status').innerText = "✅ Done!";
+            } catch (error) {
+                document.getElementById('status').innerText = "❌ Error: " + error.message;
+            }
         }
 
         function copyText(id) {
@@ -62,4 +92,3 @@
 
 </body>
 </html>
-
