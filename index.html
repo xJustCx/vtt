@@ -38,16 +38,18 @@
                 headers: {
                     'Authorization': '2346b905fedf40518f50049fba1c898f', // Replace with your API Key
                 },
-                body: formData
+                body: JSON.stringify({
+
+                })
             })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('transcript').value = data.text || "No transcript available.";
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
             })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('error').innerText = "Error: Failed to fetch.";
-            });
+            .then(data => console.log('Success:', data))
+            .catch(error => console.error('Error:', error));
         }
 
         function copyText(id) {
