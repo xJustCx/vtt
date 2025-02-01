@@ -3,39 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elevate AI - Video to Text</title>
+    <title>Elevate AI - Transcription</title>
 </head>
 <body>
-    <h2>Elevate AI - Video to Text</h2>
+    <h2>Elevate AI - Upload & Transcribe</h2>
     
-    <!-- File Upload -->
-    <input type="file" id="videoInput" accept="video/*">
-    <button onclick="processVideo()">Upload & Process</button>
-
+    <input type="file" id="fileInput" accept=".mp3, .mp4, .wav, .m4a">
+    <button onclick="processAudio()">Upload & Process</button>
+    
     <p id="status">Status: Waiting...</p>
-
-    <!-- Transcript Output -->
-    <h3>Transcript:</h3>
-    <textarea id="transcript" rows="10" cols="50" readonly></textarea>
-    <button onclick="copyText()">Copy Transcript</button>
+    
+    <h3>Full Transcript:</h3>
+    <textarea id="transcript" rows="5" cols="50" readonly></textarea>
+    <button onclick="copyText('transcript')">Copy Transcript</button>
+    
+    <h3>Summarized Text:</h3>
+    <textarea id="aiResults" rows="3" cols="50" readonly></textarea>
+    <button onclick="copyText('aiResults')">Copy Summary</button>
 
     <script>
-        const baseUrl = "https://api.elevateai.com/v1/interactions";  // Corrected API Base URL
-        const apiToken = "YOUR_API_TOKEN_HERE";  // Replace with your API key
+        const baseUrl = "https://api.elevateai.com/v1/interactions";
+        const apiToken = "YOUR_API_TOKEN_HERE"; // Replace with your actual API token
 
-        async function processVideo() {
-            let fileInput = document.getElementById("videoInput");
-            if (fileInput.files.length === 0) {
-                alert("Please select a video file.");
+        async function processAudio() {
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) {
+                alert("Please select a file.");
                 return;
             }
-
-            let file = fileInput.files[0];
 
             document.getElementById("status").innerText = "Uploading...";
 
             try {
-                // Step 1: Declare the interaction
+                // Declare the interaction
                 let declareResponse = await fetch(`${baseUrl}/declare`, {
                     method: "POST",
                     headers: {
@@ -48,12 +48,13 @@
                         accuracy: "highAccuracy"
                     })
                 });
+
                 let declareData = await declareResponse.json();
                 let interactionId = declareData.id;
 
-                // Step 2: Upload Video File
+                // Upload the file
                 let formData = new FormData();
-                formData.append("file", file);
+                formData.append("file", fileInput.files[0]);
 
                 let uploadResponse = await fetch(`${baseUrl}/upload/${interactionId}`, {
                     method: "POST",
@@ -67,7 +68,7 @@
 
                 document.getElementById("status").innerText = "Processing...";
 
-                // Step 3: Poll for Processing Completion
+                // Poll for processing completion
                 while (true) {
                     let statusResponse = await fetch(`${baseUrl}/status/${interactionId}`, {
                         headers: { "Authorization": `Bearer ${apiToken}` }
@@ -75,29 +76,35 @@
                     let statusData = await statusResponse.json();
 
                     if (statusData.status === "processed") break;
-                    await new Promise(r => setTimeout(r, 30000)); // Check every 30 seconds
+                    await new Promise(r => setTimeout(r, 30000)); // Wait 30 seconds
                 }
 
-                // Step 4: Get Transcript
+                // Get full transcript
                 let transcriptResponse = await fetch(`${baseUrl}/transcripts/${interactionId}?full=true`, {
                     headers: { "Authorization": `Bearer ${apiToken}` }
                 });
                 let transcripts = await transcriptResponse.text();
-
-                // Display results
-                document.getElementById("status").innerText = "Processing Complete!";
                 document.getElementById("transcript").value = transcripts;
 
+                // Get AI summary
+                let aiResultsResponse = await fetch(`${baseUrl}/aiResults/${interactionId}`, {
+                    headers: { "Authorization": `Bearer ${apiToken}` }
+                });
+                let aiResults = await aiResultsResponse.text();
+                document.getElementById("aiResults").value = aiResults;
+
+                document.getElementById("status").innerText = "Processing Complete!";
+                
             } catch (error) {
                 document.getElementById("status").innerText = "Error: " + error.message;
             }
         }
 
-        function copyText() {
-            let transcriptBox = document.getElementById("transcript");
-            transcriptBox.select();
+        function copyText(elementId) {
+            let textArea = document.getElementById(elementId);
+            textArea.select();
             document.execCommand("copy");
-            alert("Transcript copied!");
+            alert("Copied to clipboard!");
         }
     </script>
 </body>
