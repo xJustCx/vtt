@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elevate AI - Transcription</title>
+    <title>Transcription</title>
 </head>
 <body>
-    <h2>Elevate AI - Upload & Transcribe</h2>
+    <h2>Upload & Transcribe</h2>
     
     <input type="file" id="fileInput" accept=".mp3, .mp4, .wav, .m4a">
     <button onclick="processAudio()">Upload & Process</button>
@@ -22,8 +22,8 @@
     <button onclick="copyText('aiResults')">Copy Summary</button>
 
     <script>
-        const baseUrl = "https://api.elevateai.com/v1/interactions";
-        const apiToken = "YOUR_API_TOKEN_HERE"; // Replace with your actual API token
+        const baseUrl = "https://assembly.ai/wildfires.mp3";
+        const apiToken = "2346b905fedf40518f50049fba1c898f"; // Replace with your actual API token
 
         async function processAudio() {
             const fileInput = document.getElementById("fileInput");
